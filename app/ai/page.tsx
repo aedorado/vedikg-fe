@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, useMemo } from 'react'
 import * as d3 from 'd3'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import SiteNav from '../components/SiteNav'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -22,6 +24,31 @@ const TYPE_COLORS: Record<string, string> = {
   animal:   '#cd853f',
 }
 const DEFAULT_COLOR = '#888'
+
+// ─── Helper: Format relationship type ────────────────────────────────────
+function formatRelationType(type: string): string {
+  // Handle direction-flipped relationships
+  const map: Record<string, string> = {
+    'son_of': 'father/mother of',
+    'daughter_of': 'parent of',
+    'brother_of': 'sibling of',
+    'sister_of': 'sibling of',
+    'spouse_of': 'spouse of',
+    'disciple_of': 'guru of',
+    'guru_of': 'disciple of',
+    'friend_of': 'friend of',
+    'enemy_of': 'enemy of',
+    'incarnation_of': 'incarnate form of',
+    'expansion_of': 'expanded by',
+    'devotee_of': 'worshipped by',
+    'resident_of': 'inhabited by',
+    'king_of': 'ruled by',
+    'killed_by': 'kills',
+    'blessed_by': 'blesses',
+    'cursed_by': 'curses',
+  }
+  return map[type] || type.replace(/_/g, ' ')
+}
 
 // ─── small badge helper ────────────────────────────────────────────────────
 function TypeBadge({ type }: { type: string }) {
@@ -48,6 +75,7 @@ function TypeBadge({ type }: { type: string }) {
 type Tab = 'overview' | 'entities' | 'relationships' | 'graph'
 
 export default function AIInsightsPage() {
+  const router = useRouter()
   const [tab, setTab] = useState<Tab>('overview')
   const [progress, setProgress] = useState<any>(null)
   const [entities, setEntities] = useState<any[]>([])
@@ -56,7 +84,6 @@ export default function AIInsightsPage() {
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
-  const [selectedEntity, setSelectedEntity] = useState<any>(null)
   const svgRef = useRef<SVGSVGElement>(null)
 
   // ── data loading ──────────────────────────────────────────────────────────
@@ -91,18 +118,16 @@ export default function AIInsightsPage() {
     }
   }, [tab])
 
-  // ── entity detail on click ────────────────────────────────────────────────
+  // ── entity detail navigation ──────────────────────────────────────────────
   function openEntity(id: number) {
-    fetch(`${API_BASE}/api/ai/entities/${id}`)
-      .then(r => r.json())
-      .then(setSelectedEntity)
+    router.push(`/ai/entities/${id}`)
   }
 
   // ── filtered lists ────────────────────────────────────────────────────────
   const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
   const filteredEntities = useMemo(() => {
     let list = entities
-    if (search.trim()) list = list.filter(e => norm(e.name).includes(norm(search)))
+    if (search.trim()) list = list.filter(e => norm(e.sanskrit_name || e.name).includes(norm(search)))
     if (typeFilter)    list = list.filter(e => e.type === typeFilter)
     return list
   }, [entities, search, typeFilter])
@@ -286,17 +311,17 @@ export default function AIInsightsPage() {
         {/* ── ENTITIES ──────────────────────────────────────────────────── */}
         {tab === 'entities' && (
           <div>
-            <div style={{ display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 24, flexWrap: 'wrap' }}>
               <input
                 placeholder="Search entities…"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', flex: '1 1 200px' }}
+                style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', flex: '1 1 200px', fontSize: '0.9rem' }}
               />
               <select
                 value={typeFilter}
                 onChange={e => setTypeFilter(e.target.value)}
-                style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
               >
                 <option value="">All types</option>
                 {entityTypes.map(t => <option key={t} value={t}>{t}</option>)}
@@ -306,36 +331,45 @@ export default function AIInsightsPage() {
             {loading ? (
               <p style={{ color: 'var(--text-secondary)' }}>Loading…</p>
             ) : filteredEntities.length === 0 ? (
-              <p style={{ color: 'var(--text-secondary)' }}>No AI entities extracted yet. Run the extraction pipeline first.</p>
+              <p style={{ color: 'var(--text-secondary)' }}>No AI entities extracted yet.</p>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
-                {filteredEntities.map(e => (
-                  <div
-                    key={e.id}
-                    onClick={() => openEntity(e.id)}
-                    style={{
-                      padding: 14, borderRadius: 8, cursor: 'pointer',
-                      backgroundColor: 'var(--bg-secondary)',
-                      border: '1px solid var(--border)',
-                      transition: 'border-color 0.15s',
-                    }}
-                    onMouseEnter={el => (el.currentTarget.style.borderColor = 'var(--accent)')}
-                    onMouseLeave={el => (el.currentTarget.style.borderColor = 'var(--border)')}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-                      <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{e.name}</span>
-                      <TypeBadge type={e.type} />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+                {filteredEntities.map(e => {
+                  const c = TYPE_COLORS[e.type] ?? DEFAULT_COLOR
+                  return (
+                    <div
+                      key={e.id}
+                      onClick={() => openEntity(e.id)}
+                      style={{
+                        borderRadius: 12, cursor: 'pointer', overflow: 'hidden',
+                        border: `1px solid ${c}35`,
+                        backgroundColor: 'var(--bg-secondary)',
+                        transition: 'transform 0.15s, box-shadow 0.15s',
+                      }}
+                      onMouseEnter={el => { el.currentTarget.style.transform = 'translateY(-3px)'; el.currentTarget.style.boxShadow = `0 8px 24px ${c}30` }}
+                      onMouseLeave={el => { el.currentTarget.style.transform = 'translateY(0)'; el.currentTarget.style.boxShadow = 'none' }}
+                    >
+                      {/* colored top bar */}
+                      <div style={{ height: 4, backgroundColor: c }} />
+                      <div style={{ padding: '14px 16px 16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: c, fontWeight: 700 }}>{e.type}</span>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', backgroundColor: c + '15', padding: '1px 8px', borderRadius: 10 }}>
+                            {e.verse_count} verse{e.verse_count !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                        <div style={{ fontWeight: 700, fontSize: '1.1rem', lineHeight: 1.2, marginBottom: 8, color: 'var(--text-primary)' }}>
+                          {e.sanskrit_name || e.name}
+                        </div>
+                        {e.description && (
+                          <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                            {e.description}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    {e.description && (
-                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '4px 0 0', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                        {e.description}
-                      </p>
-                    )}
-                    <div style={{ marginTop: 8, fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                      {e.verse_count} verse{e.verse_count !== 1 ? 's' : ''}
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
@@ -371,16 +405,16 @@ export default function AIInsightsPage() {
                       <td style={{ padding: '8px 10px' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <TypeBadge type={r.source_type} />
-                          {r.source}
+                          {r.source_sanskrit || r.source}
                         </span>
                       </td>
                       <td style={{ padding: '8px 10px', color: 'var(--accent)', whiteSpace: 'nowrap' }}>
-                        {r.type.replace(/_/g, ' ')}
+                        {formatRelationType(r.type)}
                       </td>
                       <td style={{ padding: '8px 10px' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <TypeBadge type={r.target_type} />
-                          {r.target}
+                          {r.target_sanskrit || r.target}
                         </span>
                       </td>
                       <td style={{ padding: '8px 10px', color: 'var(--text-secondary)', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -415,74 +449,6 @@ export default function AIInsightsPage() {
           </div>
         )}
       </section>
-
-      {/* ── Entity Detail Drawer ─────────────────────────────────────────── */}
-      {selectedEntity && (
-        <div
-          style={{
-            position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 50,
-            display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end',
-          }}
-          onClick={() => setSelectedEntity(null)}
-        >
-          <div
-            style={{
-              width: '100%', maxWidth: 460, height: '90vh',
-              backgroundColor: 'var(--bg-primary)', borderRadius: '12px 0 0 12px',
-              padding: 24, overflowY: 'auto', boxShadow: '-4px 0 24px rgba(0,0,0,0.3)',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-              <div>
-                <h2 style={{ fontSize: '1.3rem', marginBottom: 6 }}>{selectedEntity.name}</h2>
-                <TypeBadge type={selectedEntity.type} />
-              </div>
-              <button onClick={() => setSelectedEntity(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: 'var(--text-secondary)' }}>✕</button>
-            </div>
-
-            {selectedEntity.description && (
-              <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginBottom: 16, lineHeight: 1.6 }}>
-                {selectedEntity.description}
-              </p>
-            )}
-
-            {(selectedEntity.relationships_out?.length > 0 || selectedEntity.relationships_in?.length > 0) && (
-              <div style={{ marginBottom: 16 }}>
-                <h3 style={{ fontSize: '0.9rem', marginBottom: 8 }}>Relationships</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {selectedEntity.relationships_out.map((r: any, i: number) => (
-                    <div key={`out-${i}`} style={{ fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ color: 'var(--accent)', minWidth: 120 }}>{r.type.replace(/_/g, ' ')}</span>
-                      <span>{r.target}</span>
-                    </div>
-                  ))}
-                  {selectedEntity.relationships_in.map((r: any, i: number) => (
-                    <div key={`in-${i}`} style={{ fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ color: 'var(--text-secondary)', minWidth: 120 }}>{r.type.replace(/_/g, ' ')} ← </span>
-                      <span>{r.source}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {selectedEntity.verses?.length > 0 && (
-              <div>
-                <h3 style={{ fontSize: '0.9rem', marginBottom: 8 }}>Appears in {selectedEntity.verses.length} verse{selectedEntity.verses.length !== 1 ? 's' : ''}</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {selectedEntity.verses.map((v: any, i: number) => (
-                    <div key={i} style={{ padding: '6px 10px', borderRadius: 6, backgroundColor: 'var(--bg-secondary)', fontSize: '0.82rem' }}>
-                      <div style={{ color: 'var(--accent)', marginBottom: 2 }}>{v.reference}</div>
-                      <div style={{ color: 'var(--text-secondary)' }}>{v.roman || v.devanagari}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </main>
   )
 }
