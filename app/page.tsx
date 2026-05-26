@@ -12,26 +12,41 @@ export default function Home() {
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-4 py-20 text-center">
         <motion.h1
-          className="heading-serif mb-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
+          style={{
+            fontFamily: 'var(--font-serif, Georgia, serif)',
+            marginBottom: '1rem',
+            fontWeight: 700,
+            fontSize: '2.25rem',
+            lineHeight: '2.5rem'
+          }}
         >
           Bhagavatam Knowledge Graph
         </motion.h1>
         <motion.p
-          className="text-parchment text-lg mb-8"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3, duration: 0.8 }}
+          style={{
+            color: 'var(--parchment, #f5e9da)',
+            fontSize: '1.125rem',
+            marginBottom: '2rem',
+            lineHeight: '1.75rem'
+          }}
         >
           Explore the sacred stories, characters, and relationships of the Śrīmad-Bhāgavatam
         </motion.p>
         <motion.div
-          className="flex gap-4 justify-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6, duration: 0.8 }}
+          style={{
+            display: 'flex',
+            gap: '1rem',
+            justifyContent: 'center'
+          }}
         >
           <Link
             href="/verses"
