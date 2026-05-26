@@ -57,8 +57,8 @@ export default function CBVerseDetailPage({
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          style={{ backgroundColor: 'var(--bg-secondary)' }}
           className="mb-8 p-6 rounded-lg"
+          style={{ backgroundColor: 'var(--bg-secondary)' }}
         >
           <h1 className="text-3xl font-bold mb-2">Caitanya Bhāgavata</h1>
           <p style={{ color: 'var(--text-secondary)' }} className="text-lg">
