@@ -117,7 +117,7 @@ export default function EntityDetailPage() {
     )
   }
 
-  const color = TYPE_COLORS[entity.type] ?? DEFAULT_COLOR
+  const color = TYPE_COLORS[entity.entity_type] ?? DEFAULT_COLOR
   const aliases = typeof entity.aliases === 'string' ? JSON.parse(entity.aliases || '[]') : (entity.aliases || [])
   const displayName = entity.sanskrit_name || entity.name
 
@@ -136,7 +136,7 @@ export default function EntityDetailPage() {
             <div style={{ flex: 1 }}>
               <h1 className="heading-serif" style={{ fontSize: '2.8rem', lineHeight: 1.1, marginBottom: 10, color }}>{displayName}</h1>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-                <span style={{ padding: '3px 12px', borderRadius: 20, backgroundColor: color + '25', border: `1px solid ${color}60`, color, fontSize: '0.78rem', textTransform: 'capitalize' }}>{entity.type}</span>
+                <span style={{ padding: '3px 12px', borderRadius: 20, backgroundColor: color + '25', border: `1px solid ${color}60`, color, fontSize: '0.78rem', textTransform: 'capitalize' }}>{entity.entity_type}</span>
                 <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{entity.mention_count} mentions · {entity.verses?.length || 0} verses</span>
               </div>
               {entity.description && (

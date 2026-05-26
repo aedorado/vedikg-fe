@@ -161,7 +161,7 @@ function CharacterDetailContent({ id: idParam }: { id: string }) {
       <section className="max-w-6xl mx-auto px-4 py-12">
         <div className="mb-8">
           <h1 className="heading-serif mb-1">{entity.name}</h1>
-          <p className="text-sm uppercase tracking-widest" style={{ color: 'var(--gold)' }}>{entity.type}</p>
+          <p className="text-sm uppercase tracking-widest" style={{ color: 'var(--gold)' }}>{entity.entity_type}</p>
           {entity.description && <p className="mt-3 text-sm" style={{ color: 'var(--text-parchment)' }}>{entity.description}</p>}
         </div>
 

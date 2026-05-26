@@ -53,7 +53,7 @@ export default function PlacesPage() {
     const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
     let list = entities
     if (search.trim()) list = list.filter(e => norm(e.name).includes(norm(search)))
-    if (typeFilter) list = list.filter(e => e.type === typeFilter)
+    if (typeFilter) list = list.filter(e => e.entity_type === typeFilter)
     if (cantoFilter !== null) list = list.filter(e => e.cantos?.includes(cantoFilter))
     if (sortBy === 'count') list = [...list].sort((a, b) => (b.verse_count || 0) - (a.verse_count || 0))
     return list
@@ -137,12 +137,12 @@ export default function PlacesPage() {
               <motion.div key={entity.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} whileHover={{ scale: 1.03 }}>
                 <Link href={`/characters/${entity.id}`}>
                   <div className="verse-card cursor-pointer text-center p-4">
-                    <div className="text-2xl mb-2">{TYPE_ICON[entity.type] ?? '📍'}</div>
+                    <div className="text-2xl mb-2">{TYPE_ICON[entity.entity_type] ?? '📍'}</div>
                     <p className="font-serif text-sm mb-1" style={{ color: 'var(--text-parchment)' }}>{entity.name}</p>
-                    <p className="text-xs mb-1" style={{ color: 'var(--gold)' }}>{TYPE_LABEL[entity.type] ?? entity.type}</p>
+                    <p className="text-xs mb-1" style={{ color: 'var(--gold)' }}>{TYPE_LABEL[entity.entity_type] ?? entity.entity_type}</p>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                       {entity.verse_count} verse{entity.verse_count !== 1 ? 's' : ''}
-                      {entity.cantos?.length > 0 && ` · C${entity.cantos.join(',')}`}
+                      {entity.cantos && entity.cantos.length > 0 && ` · C${entity.cantos.join(',')}`}
                     </p>
                   </div>
                 </Link>

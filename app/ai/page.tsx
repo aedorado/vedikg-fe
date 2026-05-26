@@ -128,7 +128,7 @@ export default function AIInsightsPage() {
   const filteredEntities = useMemo(() => {
     let list = entities
     if (search.trim()) list = list.filter(e => norm(e.sanskrit_name || e.name).includes(norm(search)))
-    if (typeFilter)    list = list.filter(e => e.type === typeFilter)
+    if (typeFilter)    list = list.filter(e => e.entity_type === typeFilter)
     return list
   }, [entities, search, typeFilter])
 

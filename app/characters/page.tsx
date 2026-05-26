@@ -125,7 +125,7 @@ export default function CharactersPage() {
                   <div className="verse-card cursor-pointer text-center p-4">
                     <div className="text-2xl mb-2">👤</div>
                     <p className="font-serif text-sm mb-1" style={{ color: 'var(--text-parchment)' }}>{entity.name}</p>
-                    <p className="text-xs mb-1" style={{ color: 'var(--gold)' }}>{entity.type}</p>
+                    <p className="text-xs mb-1" style={{ color: 'var(--gold)' }}>{entity.entity_type}</p>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                       {entity.verse_count} verse{entity.verse_count !== 1 ? 's' : ''}
                       {entity.cantos?.length > 0 && ` · C${entity.cantos.join(',')}`}
