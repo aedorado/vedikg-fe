@@ -53,6 +53,7 @@ function formatRelationType(type: string): string {
 // ─── small badge helper ────────────────────────────────────────────────────
 function TypeBadge({ type }: { type: string }) {
   const color = TYPE_COLORS[type] ?? DEFAULT_COLOR
+  console.log(type);
   return (
     <span
       style={{
@@ -72,7 +73,7 @@ function TypeBadge({ type }: { type: string }) {
 }
 
 // ─── tabs ──────────────────────────────────────────────────────────────────
-type Tab = 'overview' | 'entities' | 'relationships' | 'graph'
+type Tab = 'overview' | 'entities' | 'relationships' | 'concepts' | 'graph'
 
 export default function AIInsightsPage() {
   const router = useRouter()
@@ -128,7 +129,9 @@ export default function AIInsightsPage() {
   const filteredEntities = useMemo(() => {
     let list = entities
     if (search.trim()) list = list.filter(e => norm(e.sanskrit_name || e.name).includes(norm(search)))
-    if (typeFilter)    list = list.filter(e => e.type === typeFilter)
+    // if (typeFilter)    list = list.filter(e => e.entity_type === typeFilter)
+    if (typeFilter)    list = list.filter(e => e.entity_type === typeFilter)
+    console.log(list);
     return list
   }, [entities, search, typeFilter])
 
@@ -140,8 +143,29 @@ export default function AIInsightsPage() {
   }, [relationships, search])
 
   const entityTypes = useMemo(() =>
-    [...new Set(entities.map(e => e.type).filter(Boolean))].sort()
+    [...new Set(entities.map(e => e.entity_type).filter(Boolean))].sort()
   , [entities])
+
+  // ── aggregate concepts ────────────────────────────────────────────────────
+  const allConcepts = useMemo(() => {
+    const m = new Map<string, { name: string; entities: string[]; count: number }>()
+    entities.forEach(e => {
+      if (e.concepts?.length) {
+        e.concepts.forEach((c: string) => {
+          if (!m.has(c)) m.set(c, { name: c, entities: [], count: 0 })
+          const entry = m.get(c)!
+          entry.count += e.verse_count || 0
+          if (!entry.entities.includes(e.sanskrit_name || e.name)) entry.entities.push(e.sanskrit_name || e.name)
+        })
+      }
+    })
+    return Array.from(m.values()).sort((a, b) => b.count - a.count)
+  }, [entities])
+
+  const filteredConcepts = useMemo(() => {
+    if (!search.trim()) return allConcepts
+    return allConcepts.filter(c => norm(c.name).includes(norm(search)))
+  }, [allConcepts, search])
 
   // ── D3 graph ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -175,7 +199,7 @@ export default function AIInsightsPage() {
     const node = g.append('g').selectAll('circle')
       .data(nodes).enter().append('circle')
       .attr('r', (d: any) => Math.max(6, Math.min(20, 4 + (d.verse_count || 0) * 0.5)))
-      .attr('fill', (d: any) => TYPE_COLORS[d.type] ?? DEFAULT_COLOR)
+      .attr('fill', (d: any) => TYPE_COLORS[d.entity_type] ?? DEFAULT_COLOR)
       .attr('stroke', '#fff').attr('stroke-width', 0.5)
       .style('cursor', 'pointer')
       .on('click', (_e, d: any) => openEntity(d.id))
@@ -233,7 +257,7 @@ export default function AIInsightsPage() {
 
         {/* Tab bar */}
         <div style={{ display: 'flex', gap: 4, marginBottom: 28, padding: '4px', backgroundColor: 'var(--bg-secondary)', borderRadius: 6, width: 'fit-content' }}>
-          {(['overview', 'entities', 'relationships', 'graph'] as Tab[]).map(t => (
+          {(['overview', 'entities', 'relationships', 'concepts', 'graph'] as Tab[]).map(t => (
             <button key={t} style={tabStyle(tab === t)} onClick={() => setTab(t)}>
               {t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
@@ -290,14 +314,14 @@ export default function AIInsightsPage() {
                     <h2 style={{ fontSize: '1.1rem', marginBottom: 12 }}>Entities by Type</h2>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                       {progress.entities_by_type.map((r: any) => (
-                        <div key={r.type} style={{
+                        <div key={r.entity_type} style={{
                           display: 'flex', alignItems: 'center', gap: 8,
                           padding: '6px 14px', borderRadius: 6,
-                          backgroundColor: (TYPE_COLORS[r.type] ?? DEFAULT_COLOR) + '20',
-                          border: `1px solid ${TYPE_COLORS[r.type] ?? DEFAULT_COLOR}40`,
+                          backgroundColor: (TYPE_COLORS[r.entity_type] ?? DEFAULT_COLOR) + '20',
+                          border: `1px solid ${TYPE_COLORS[r.entity_type] ?? DEFAULT_COLOR}40`,
                         }}>
-                          <span style={{ color: TYPE_COLORS[r.type] ?? DEFAULT_COLOR, fontWeight: 600 }}>{r.count}</span>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{r.type}</span>
+                          <span style={{ color: TYPE_COLORS[r.entity_type] ?? DEFAULT_COLOR, fontWeight: 600 }}>{r.count}</span>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{r.entity_type}</span>
                         </div>
                       ))}
                     </div>
@@ -335,7 +359,7 @@ export default function AIInsightsPage() {
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
                 {filteredEntities.map(e => {
-                  const c = TYPE_COLORS[e.type] ?? DEFAULT_COLOR
+                  const c = TYPE_COLORS[e.entity_type] ?? DEFAULT_COLOR
                   return (
                     <div
                       key={e.id}
@@ -353,7 +377,7 @@ export default function AIInsightsPage() {
                       <div style={{ height: 4, backgroundColor: c }} />
                       <div style={{ padding: '14px 16px 16px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                          <span style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: c, fontWeight: 700 }}>{e.type}</span>
+                          <span style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: c, fontWeight: 700 }}>{e.entity_type}</span>
                           <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', backgroundColor: c + '15', padding: '1px 8px', borderRadius: 10 }}>
                             {e.verse_count} verse{e.verse_count !== 1 ? 's' : ''}
                           </span>
@@ -409,7 +433,7 @@ export default function AIInsightsPage() {
                         </span>
                       </td>
                       <td style={{ padding: '8px 10px', color: 'var(--accent)', whiteSpace: 'nowrap' }}>
-                        {formatRelationType(r.type)}
+                        {formatRelationType(r.entity_type)}
                       </td>
                       <td style={{ padding: '8px 10px' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -424,6 +448,25 @@ export default function AIInsightsPage() {
                   ))}
                 </tbody>
               </table>
+            )}
+          </div>
+        )}
+
+        {/* ── CONCEPTS ──────────────────────────────────────────────────── */}
+        {tab === 'concepts' && (
+          <div>
+            <input placeholder="Search concepts…" value={search} onChange={e => setSearch(e.target.value)} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', width: '100%', maxWidth: 400, marginBottom: 24, fontSize: '0.9rem' }} />
+            {entities.length === 0 ? (<p style={{ color: 'var(--text-secondary)' }}>Load entities first.</p>) : filteredConcepts.length === 0 ? (<p style={{ color: 'var(--text-secondary)' }}>No concepts extracted yet.</p>) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+                {filteredConcepts.map((c, i) => (<div key={i} style={{ borderRadius: 12, border: '1px solid var(--accent)30', backgroundColor: 'var(--bg-secondary)' }}>
+                  <div style={{ height: 4, backgroundColor: 'var(--accent)' }} />
+                  <div style={{ padding: '14px 16px' }}>
+                    <div style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: 8 }}>{c.name}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 8 }}>{c.count} verses • {c.entities.length} entities</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>{c.entities.slice(0, 3).map((e, j) => (<span key={j} style={{ fontSize: '0.7rem', backgroundColor: 'var(--accent)10', color: 'var(--accent)', padding: '2px 6px', borderRadius: 4 }}>{e}</span>))}{c.entities.length > 3 && <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', padding: '2px 6px' }}>+{c.entities.length - 3}</span>}</div>
+                  </div>
+                </div>))}
+              </div>
             )}
           </div>
         )}
