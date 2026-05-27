@@ -1,4 +1,77 @@
+
 'use client'
+
+// ─── Simple Modal ──────────────────────────────────────────────────────────
+function Modal({ open, onClose, children }: { open: boolean, onClose: () => void, children: React.ReactNode }) {
+  if (!open) return null
+  return (
+    <div style={{ position: 'fixed', zIndex: 1000, top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
+      <div style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', borderRadius: 10, minWidth: 320, maxWidth: 480, maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 8px 32px #0008', padding: 28, position: 'relative' }} onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} style={{ position: 'absolute', top: 10, right: 16, background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: 22, cursor: 'pointer' }}>&times;</button>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// ─── ConceptsTab component ────────────────────────────────────────────────
+function ConceptsTab({ filteredConcepts, loading }: { filteredConcepts: any[], loading: boolean }) {
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalConcept, setModalConcept] = useState<any>(null)
+  const router = useRouter()
+
+  function openModal(concept: any) {
+    setModalConcept(concept)
+    setModalOpen(true)
+  }
+  function closeModal() {
+    setModalOpen(false)
+    setModalConcept(null)
+  }
+  function goToVerse(verseId: number) {
+    router.push(`/verses/${verseId}`)
+    closeModal()
+  }
+
+  return (
+    <div>
+      <input placeholder="Search concepts…" value={''} onChange={() => {}} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', width: '100%', maxWidth: 400, marginBottom: 24, fontSize: '0.9rem', opacity: 0.5, pointerEvents: 'none' }} disabled />
+      {/* The above disables the search box in the modal context, you can wire it up if you want */}
+      {loading ? (<p style={{ color: 'var(--text-secondary)' }}>Loading…</p>) : filteredConcepts.length === 0 ? (<p style={{ color: 'var(--text-secondary)' }}>No concepts extracted yet.</p>) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+          {filteredConcepts.map((c, i) => (
+            <div key={i} style={{ borderRadius: 12, border: '1px solid var(--accent)30', backgroundColor: 'var(--bg-secondary)', cursor: 'pointer' }} onClick={() => openModal(c)}>
+              <div style={{ height: 4, backgroundColor: 'var(--accent)' }} />
+              <div style={{ padding: '14px 16px' }}>
+                <div style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: 8 }}>{c.concept}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 8 }}>{c.verse_titles.length} verses</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {c.verse_titles.slice(0, 5).map((v: string, j: number) => (
+                    <span key={j} style={{ fontSize: '0.7rem', backgroundColor: 'var(--accent)10', color: 'var(--accent)', padding: '2px 6px', borderRadius: 4 }}>{v}</span>
+                  ))}
+                  {c.verse_titles.length > 5 && <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', padding: '2px 6px' }}>+{c.verse_titles.length - 5} more</span>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <Modal open={modalOpen} onClose={closeModal}>
+        {modalConcept && (
+          <div>
+            <div style={{ fontWeight: 700, fontSize: '1.2rem', marginBottom: 12 }}>{modalConcept.concept}</div>
+            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: 16 }}>{modalConcept.verse_titles.length} verses</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {modalConcept.verse_titles.map((v: string, idx: number) => (
+                <span key={idx} style={{ fontSize: '0.95rem', color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => goToVerse(modalConcept.verse_ids[idx])}>{v}</span>
+              ))}
+            </div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  )
+}
 
 import { useEffect, useRef, useState, useMemo } from 'react'
 import * as d3 from 'd3'
@@ -82,6 +155,8 @@ export default function AIInsightsPage() {
   const [entities, setEntities] = useState<any[]>([])
   const [relationships, setRelationships] = useState<any[]>([])
   const [graphData, setGraphData] = useState<{ nodes: any[]; edges: any[] } | null>(null)
+  const [concepts, setConcepts] = useState<any[]>([])
+  const [conceptsLoading, setConceptsLoading] = useState(false)
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
@@ -117,6 +192,13 @@ export default function AIInsightsPage() {
         .then(d => { setGraphData(d); setLoading(false) })
         .catch(() => setLoading(false))
     }
+    if (tab === 'concepts' && concepts.length === 0) {
+      setConceptsLoading(true)
+      fetch(`${API_BASE}/api/ai/concepts`)
+        .then(r => r.json())
+        .then(d => { setConcepts(d); setConceptsLoading(false) })
+        .catch(() => setConceptsLoading(false))
+    }
   }, [tab])
 
   // ── entity detail navigation ──────────────────────────────────────────────
@@ -146,26 +228,13 @@ export default function AIInsightsPage() {
     [...new Set(entities.map(e => e.entity_type).filter(Boolean))].sort()
   , [entities])
 
-  // ── aggregate concepts ────────────────────────────────────────────────────
-  const allConcepts = useMemo(() => {
-    const m = new Map<string, { name: string; entities: string[]; count: number }>()
-    entities.forEach(e => {
-      if (e.concepts?.length) {
-        e.concepts.forEach((c: string) => {
-          if (!m.has(c)) m.set(c, { name: c, entities: [], count: 0 })
-          const entry = m.get(c)!
-          entry.count += e.verse_count || 0
-          if (!entry.entities.includes(e.sanskrit_name || e.name)) entry.entities.push(e.sanskrit_name || e.name)
-        })
-      }
-    })
-    return Array.from(m.values()).sort((a, b) => b.count - a.count)
-  }, [entities])
-
+  // ── filter concepts from API ─────────────────────────────────────────────
   const filteredConcepts = useMemo(() => {
-    if (!search.trim()) return allConcepts
-    return allConcepts.filter(c => norm(c.name).includes(norm(search)))
-  }, [allConcepts, search])
+    if (!search.trim()) return concepts
+    return concepts.filter((c: any) =>
+      (c.concept || c.name || '').toLowerCase().includes(search.toLowerCase())
+    )
+  }, [concepts, search])
 
   // ── D3 graph ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -454,21 +523,7 @@ export default function AIInsightsPage() {
 
         {/* ── CONCEPTS ──────────────────────────────────────────────────── */}
         {tab === 'concepts' && (
-          <div>
-            <input placeholder="Search concepts…" value={search} onChange={e => setSearch(e.target.value)} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', width: '100%', maxWidth: 400, marginBottom: 24, fontSize: '0.9rem' }} />
-            {entities.length === 0 ? (<p style={{ color: 'var(--text-secondary)' }}>Load entities first.</p>) : filteredConcepts.length === 0 ? (<p style={{ color: 'var(--text-secondary)' }}>No concepts extracted yet.</p>) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-                {filteredConcepts.map((c, i) => (<div key={i} style={{ borderRadius: 12, border: '1px solid var(--accent)30', backgroundColor: 'var(--bg-secondary)' }}>
-                  <div style={{ height: 4, backgroundColor: 'var(--accent)' }} />
-                  <div style={{ padding: '14px 16px' }}>
-                    <div style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: 8 }}>{c.name}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 8 }}>{c.count} verses • {c.entities.length} entities</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>{c.entities.slice(0, 3).map((e, j) => (<span key={j} style={{ fontSize: '0.7rem', backgroundColor: 'var(--accent)10', color: 'var(--accent)', padding: '2px 6px', borderRadius: 4 }}>{e}</span>))}{c.entities.length > 3 && <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', padding: '2px 6px' }}>+{c.entities.length - 3}</span>}</div>
-                  </div>
-                </div>))}
-              </div>
-            )}
-          </div>
+          <ConceptsTab filteredConcepts={filteredConcepts} loading={conceptsLoading} />
         )}
 
         {/* ── GRAPH ─────────────────────────────────────────────────────── */}
