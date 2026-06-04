@@ -165,29 +165,30 @@ export default function BRSVersePage({
         </div>
 
         {/* Reference header */}
-        <motion.div
-          initial={{ opacity: 0, y: -16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-lg p-5 mb-6"
-          style={{ backgroundColor: 'var(--bg-secondary)', borderLeft: `3px solid ${meta.color}` }}
-        >
-          <p className="text-xs mb-1" style={{ color: meta.color }}>Bhakti-rasāmṛta-sindhu</p>
-          <h1 className="font-serif text-2xl font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
-            {verse.full_reference}
-          </h1>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            {meta.label} · Wave {wave}
-          </p>
-        </motion.div>
+        <div className="rounded-lg p-5 mb-6">
+          <motion.div
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{ backgroundColor: 'var(--bg-secondary)', borderLeft: `3px solid ${meta.color}` }}
+          >
+            <p className="text-xs mb-1" style={{ color: meta.color }}>Bhakti-rasāmṛta-sindhu</p>
+            <h1 className="font-serif text-2xl font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+              {verse.full_reference}
+            </h1>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              {meta.label} · Wave {wave}
+            </p>
+          </motion.div>
+        </div>
 
         {/* Sanskrit / transliteration */}
         {verse.transliteration && (
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-            className="verse-card mb-6"
-          >
+          <div className="verse-card mb-6">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+            >
             <p
               className="text-xs uppercase tracking-widest mb-4"
               style={{ color: meta.color }}
@@ -219,17 +220,18 @@ export default function BRSVersePage({
                 </span>
               ))}
             </p>
-          </motion.div>
+            </motion.div>
+          </div>
         )}
 
         {/* Translation */}
         {verse.translation && (
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="verse-card mb-6"
-          >
+          <div className="verse-card mb-6">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
             <p className="text-xs uppercase tracking-widest mb-4" style={{ color: meta.color }}>
               Translation
             </p>
@@ -239,24 +241,26 @@ export default function BRSVersePage({
                 {para.trim()}
               </p>
             ))}
-          </motion.div>
+            </motion.div>
+          </div>
         )}
 
         {/* Commentaries */}
         {purports.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="mb-8"
-          >
+          <div className="mb-8">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+            >
             <p className="text-xs uppercase tracking-widest mb-4" style={{ color: meta.color }}>
               Commentaries
             </p>
             {purports.map((p: any, i: number) => (
               <CommentaryBlock key={i} author={p.author} text={p.body_text ?? ''} footnotes={footnotes} />
             ))}
-          </motion.div>
+            </motion.div>
+          </div>
         )}
 
         {/* Prev / Next nav */}
