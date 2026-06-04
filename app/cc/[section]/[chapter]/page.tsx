@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import SiteNav from '../../../components/SiteNav'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -103,7 +102,7 @@ function CCChapterContent({ section: sectionParam, chapter: chapterParam }: { se
   if (loading) {
     return (
       <main style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }} className="min-h-screen">
-        <SiteNav />
+        
         <div className="max-w-4xl mx-auto px-4 py-12 flex items-center justify-center h-64">
           <p style={{ color: 'var(--text-muted)' }}>Loading verses...</p>
         </div>
@@ -114,7 +113,7 @@ function CCChapterContent({ section: sectionParam, chapter: chapterParam }: { se
   if (error || !data) {
     return (
       <main style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }} className="min-h-screen">
-        <SiteNav />
+        
         <div className="max-w-4xl mx-auto px-4 py-12">
           <p style={{ color: 'var(--text-primary)' }}>{error || 'Chapter not found'}</p>
           <Link href="/cc" className="text-sm mt-4 inline-block" style={{ color: 'var(--gold)' }}>
@@ -127,7 +126,7 @@ function CCChapterContent({ section: sectionParam, chapter: chapterParam }: { se
 
   return (
     <main style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }} className="min-h-screen">
-      <SiteNav />
+      
       <section className="max-w-5xl mx-auto px-4 py-12">
         {/* Header with Nav */}
         <div className="mb-8">

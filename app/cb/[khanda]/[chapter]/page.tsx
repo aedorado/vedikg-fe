@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import SiteNav from '../../../components/SiteNav'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -52,7 +51,7 @@ export default function CBChapterPage({
 
   return (
     <main className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-      <SiteNav />
+      
       <section className="max-w-5xl mx-auto px-4 py-12">
         <div className="mb-8">
           <Link href={`/cb/${khanda}`} className="text-sm mb-6 inline-block hover:opacity-70 transition"

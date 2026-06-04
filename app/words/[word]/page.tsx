@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import SiteNav from '../../components/SiteNav'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -40,7 +39,7 @@ function WordContent({ word: wordParam }: { word: string }) {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
-      <SiteNav />
+      
       <div className="max-w-3xl mx-auto px-4 py-12">
         {/* Header */}
         <div className="mb-8">

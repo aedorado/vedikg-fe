@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import SiteNav from '../../../../components/SiteNav'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -50,7 +49,7 @@ export default function CBVerseDetailPage({
 
   return (
     <div style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', minHeight: '100vh' }}>
-      <SiteNav />
+      
 
       <div className="max-w-3xl mx-auto px-4 py-8">
         {/* Header with book info */}

@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import SiteNav from '../../components/SiteNav'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -57,21 +56,21 @@ function ChandaDetailContent({ name }: { name: string }) {
 
   if (loading) return (
     <main style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', minHeight: '100vh' }}>
-      <SiteNav />
+      
       <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-muted)' }}>Loading...</div>
     </main>
   )
 
   if (!chanda) return (
     <main style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', minHeight: '100vh' }}>
-      <SiteNav />
+      
       <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-muted)' }}>Meter not found</div>
     </main>
   )
 
   return (
     <main style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', minHeight: '100vh' }}>
-      <SiteNav />
+      
       <section style={{ maxWidth: '56rem', margin: '0 auto', padding: '3rem 1rem' }}>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
 

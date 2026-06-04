@@ -1,552 +1,634 @@
-
 'use client'
 
-// ─── Simple Modal ──────────────────────────────────────────────────────────
-function Modal({ open, onClose, children }: { open: boolean, onClose: () => void, children: React.ReactNode }) {
-  if (!open) return null
+import { useEffect, useRef, useState, useMemo, Suspense } from 'react'
+import * as d3 from 'd3'
+import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
+const TYPE_COLORS: Record<string, string> = {
+  person: '#d4af37', deva: '#7ec8b0', demon: '#e07b5a', sage: '#b0c4de',
+  place: '#90ee90', river: '#4dd0e1', mountain: '#9e9e9e', kingdom: '#c87ec8',
+  dynasty: '#e09a5a', concept: '#888', object: '#bbb', text: '#f0e68c',
+  animal: '#cd853f',
+}
+const DEFAULT_COLOR = '#888'
+
+const TYPE_ICONS: Record<string, string> = {
+  person: '👤', deva: '✨', demon: '👹', sage: '🧘',
+  place: '🏛️', river: '🌊', mountain: '⛰️', kingdom: '👑',
+  dynasty: '🏰', concept: '💡', object: '🪔', text: '📜', animal: '🦁',
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Small reusable components
+// ─────────────────────────────────────────────────────────────────────────────
+
+function Skeleton({ w = '100%', h = 18, r = 6 }: { w?: string | number; h?: number; r?: number }) {
   return (
-    <div style={{ position: 'fixed', zIndex: 1000, top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
-      <div style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', borderRadius: 10, minWidth: 320, maxWidth: 480, maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 8px 32px #0008', padding: 28, position: 'relative' }} onClick={e => e.stopPropagation()}>
-        <button onClick={onClose} style={{ position: 'absolute', top: 10, right: 16, background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: 22, cursor: 'pointer' }}>&times;</button>
-        {children}
+    <div style={{
+      width: w, height: h, borderRadius: r,
+      background: 'linear-gradient(90deg, var(--bg-secondary) 25%, var(--border) 50%, var(--bg-secondary) 75%)',
+      backgroundSize: '200% 100%',
+      animation: 'shimmer 1.4s infinite',
+    }} />
+  )
+}
+
+function StatCard({ label, value, accent }: { label: string; value: number | undefined; accent?: string }) {
+  return (
+    <div style={{
+      padding: '18px 22px', borderRadius: 12,
+      backgroundColor: 'var(--bg-secondary)',
+      border: `1px solid ${accent || 'var(--border)'}30`,
+      textAlign: 'center', flex: '1 1 130px',
+    }}>
+      <div style={{ fontSize: '1.8rem', fontWeight: 800, color: accent || 'var(--text-primary)', lineHeight: 1 }}>
+        {value?.toLocaleString() ?? '—'}
+      </div>
+      <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: 5, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+        {label}
       </div>
     </div>
   )
 }
 
-// ─── ConceptsTab component ────────────────────────────────────────────────
-function ConceptsTab({ filteredConcepts, loading }: { filteredConcepts: any[], loading: boolean }) {
-  const [modalOpen, setModalOpen] = useState(false)
-  const [modalConcept, setModalConcept] = useState<any>(null)
-  const router = useRouter()
-
-  function openModal(concept: any) {
-    setModalConcept(concept)
-    setModalOpen(true)
-  }
-  function closeModal() {
-    setModalOpen(false)
-    setModalConcept(null)
-  }
-  function goToVerse(verseId: number) {
-    router.push(`/verses/${verseId}`)
-    closeModal()
-  }
-
+// Entity card
+function EntityCard({ entity, onClick }: { entity: any; onClick: () => void }) {
+  const c = TYPE_COLORS[entity.entity_type] ?? DEFAULT_COLOR
+  const icon = TYPE_ICONS[entity.entity_type] ?? '•'
   return (
-    <div>
-      <input placeholder="Search concepts…" value={''} onChange={() => {}} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', width: '100%', maxWidth: 400, marginBottom: 24, fontSize: '0.9rem', opacity: 0.5, pointerEvents: 'none' }} disabled />
-      {/* The above disables the search box in the modal context, you can wire it up if you want */}
-      {loading ? (<p style={{ color: 'var(--text-secondary)' }}>Loading…</p>) : filteredConcepts.length === 0 ? (<p style={{ color: 'var(--text-secondary)' }}>No concepts extracted yet.</p>) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-          {filteredConcepts.map((c, i) => (
-            <div key={i} style={{ borderRadius: 12, border: '1px solid var(--accent)30', backgroundColor: 'var(--bg-secondary)', cursor: 'pointer' }} onClick={() => openModal(c)}>
-              <div style={{ height: 4, backgroundColor: 'var(--accent)' }} />
-              <div style={{ padding: '14px 16px' }}>
-                <div style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: 8 }}>{c.concept}</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 8 }}>{c.verse_titles.length} verses</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                  {c.verse_titles.slice(0, 5).map((v: string, j: number) => (
-                    <span key={j} style={{ fontSize: '0.7rem', backgroundColor: 'var(--accent)10', color: 'var(--accent)', padding: '2px 6px', borderRadius: 4 }}>{v}</span>
-                  ))}
-                  {c.verse_titles.length > 5 && <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', padding: '2px 6px' }}>+{c.verse_titles.length - 5} more</span>}
-                </div>
-              </div>
-            </div>
-          ))}
+    <div
+      onClick={onClick}
+      style={{
+        borderRadius: 14, overflow: 'hidden', cursor: 'pointer',
+        border: `1px solid ${c}28`,
+        backgroundColor: 'var(--bg-secondary)',
+        transition: 'transform 0.18s, box-shadow 0.18s',
+        display: 'flex', flexDirection: 'column',
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.transform = 'translateY(-4px)'
+        e.currentTarget.style.boxShadow = `0 12px 32px ${c}30`
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.transform = ''
+        e.currentTarget.style.boxShadow = ''
+      }}
+    >
+      <div style={{ height: 4, background: `linear-gradient(90deg, ${c}, ${c}88)` }} />
+      <div style={{ padding: '14px 16px 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: '1rem' }}>{icon}</span>
+          <span style={{
+            fontSize: '0.65rem', color: 'var(--text-secondary)',
+            backgroundColor: c + '14', padding: '2px 8px', borderRadius: 10,
+          }}>
+            {entity.verse_count} verse{entity.verse_count !== 1 ? 's' : ''}
+          </span>
         </div>
-      )}
-      <Modal open={modalOpen} onClose={closeModal}>
-        {modalConcept && (
-          <div>
-            <div style={{ fontWeight: 700, fontSize: '1.2rem', marginBottom: 12 }}>{modalConcept.concept}</div>
-            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: 16 }}>{modalConcept.verse_titles.length} verses</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {modalConcept.verse_titles.map((v: string, idx: number) => (
-                <span key={idx} style={{ fontSize: '0.95rem', color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => goToVerse(modalConcept.verse_ids[idx])}>{v}</span>
-              ))}
-            </div>
-          </div>
+        <div style={{ fontWeight: 700, fontSize: '1rem', lineHeight: 1.25, color: 'var(--text-primary)' }}>
+          {entity.sanskrit_name || entity.name}
+        </div>
+        {entity.name !== entity.sanskrit_name && entity.sanskrit_name && (
+          <div style={{ fontSize: '0.75rem', color: c, fontWeight: 500 }}>{entity.name}</div>
         )}
-      </Modal>
+        {entity.description && (
+          <p style={{
+            margin: 0, fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.55,
+            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+            flex: 1,
+          }}>
+            {entity.description}
+          </p>
+        )}
+      </div>
     </div>
   )
 }
 
-import { useEffect, useRef, useState, useMemo } from 'react'
-import * as d3 from 'd3'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import SiteNav from '../components/SiteNav'
+const CONCEPT_COLOR = '#b0c4de'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-
-const TYPE_COLORS: Record<string, string> = {
-  person:   '#d4af37',
-  deva:     '#7ec8b0',
-  demon:    '#e07b5a',
-  sage:     '#b0c4de',
-  place:    '#90ee90',
-  river:    '#4dd',
-  mountain: '#aaa',
-  kingdom:  '#c87ec8',
-  dynasty:  '#e09a5a',
-  concept:  '#888',
-  object:   '#ccc',
-  text:     '#f0e68c',
-  animal:   '#cd853f',
-}
-const DEFAULT_COLOR = '#888'
-
-// ─── Helper: Format relationship type ────────────────────────────────────
-function formatRelationType(type: string): string {
-  // Handle direction-flipped relationships
-  const map: Record<string, string> = {
-    'son_of': 'father/mother of',
-    'daughter_of': 'parent of',
-    'brother_of': 'sibling of',
-    'sister_of': 'sibling of',
-    'spouse_of': 'spouse of',
-    'disciple_of': 'guru of',
-    'guru_of': 'disciple of',
-    'friend_of': 'friend of',
-    'enemy_of': 'enemy of',
-    'incarnation_of': 'incarnate form of',
-    'expansion_of': 'expanded by',
-    'devotee_of': 'worshipped by',
-    'resident_of': 'inhabited by',
-    'king_of': 'ruled by',
-    'killed_by': 'kills',
-    'blessed_by': 'blesses',
-    'cursed_by': 'curses',
-  }
-  return map[type] || type.replace(/_/g, ' ')
-}
-
-// ─── small badge helper ────────────────────────────────────────────────────
-function TypeBadge({ type }: { type: string }) {
-  const color = TYPE_COLORS[type] ?? DEFAULT_COLOR
-  console.log(type);
+// Concept grid card — mirrors EntityCard style
+function ConceptCard({ concept, onClick }: { concept: any; onClick: () => void }) {
+  const c = CONCEPT_COLOR
   return (
-    <span
+    <div
+      onClick={onClick}
       style={{
-        backgroundColor: color + '30',
-        border: `1px solid ${color}`,
-        color,
-        fontSize: '0.65rem',
-        padding: '1px 6px',
-        borderRadius: 4,
-        textTransform: 'capitalize',
-        whiteSpace: 'nowrap',
+        borderRadius: 14, overflow: 'hidden', cursor: 'pointer',
+        border: `1px solid ${c}28`,
+        backgroundColor: 'var(--bg-secondary)',
+        transition: 'transform 0.18s, box-shadow 0.18s',
+        display: 'flex', flexDirection: 'column',
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.transform = 'translateY(-4px)'
+        e.currentTarget.style.boxShadow = `0 12px 32px ${c}30`
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.transform = ''
+        e.currentTarget.style.boxShadow = ''
       }}
     >
-      {type}
-    </span>
+      <div style={{ height: 4, background: `linear-gradient(90deg, ${c}, ${c}88)` }} />
+      <div style={{ padding: '14px 16px 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: '1rem' }}>💡</span>
+          <span style={{
+            fontSize: '0.65rem', color: 'var(--text-secondary)',
+            backgroundColor: c + '14', padding: '2px 8px', borderRadius: 10,
+          }}>
+            {concept.verse_count} verse{concept.verse_count !== 1 ? 's' : ''}
+          </span>
+        </div>
+        <div style={{ fontWeight: 700, fontSize: '1rem', lineHeight: 1.25, color: 'var(--text-primary)', textTransform: 'capitalize' }}>
+          {concept.concept}
+        </div>
+        {concept.description ? (
+          <p style={{
+            margin: 0, fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.55,
+            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+            flex: 1,
+          }}>
+            {concept.description}
+          </p>
+        ) : (
+          <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-secondary)', opacity: 0.5, flex: 1 }}>
+            Mentioned across {concept.verse_count} verse{concept.verse_count !== 1 ? 's' : ''}
+          </p>
+        )}
+      </div>
+    </div>
   )
 }
 
-// ─── tabs ──────────────────────────────────────────────────────────────────
-type Tab = 'overview' | 'entities' | 'relationships' | 'concepts' | 'graph'
+// Section heading
+function SectionTitle({ children, count, action }: { children: React.ReactNode; count?: number; action?: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 20 }}>
+      <h2 className="heading-serif" style={{ fontSize: '1.5rem', margin: 0 }}>
+        {children}
+        {count !== undefined && (
+          <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 400, marginLeft: 8 }}>
+            ({count.toLocaleString()})
+          </span>
+        )}
+      </h2>
+      {action}
+    </div>
+  )
+}
 
-export default function AIInsightsPage() {
+// ─────────────────────────────────────────────────────────────────────────────
+// Main page
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AIPageInner() {
   const router = useRouter()
-  const [tab, setTab] = useState<Tab>('overview')
+  const searchParams = useSearchParams()
+
+  const [query, setQuery] = useState(searchParams.get('q') || '')
+  const [typeFilter, setTypeFilter] = useState(searchParams.get('type') || '')
+  const [bookFilter, setBookFilter] = useState(searchParams.get('book') || '')
+  const [cantoFilter, setCantoFilter] = useState(searchParams.get('canto') || '')
+  const [chapterFilter, setChapterFilter] = useState(searchParams.get('chapter') || '')
+
+  // Data
   const [progress, setProgress] = useState<any>(null)
   const [entities, setEntities] = useState<any[]>([])
-  const [relationships, setRelationships] = useState<any[]>([])
-  const [graphData, setGraphData] = useState<{ nodes: any[]; edges: any[] } | null>(null)
+  const [entityTotal, setEntityTotal] = useState(0)
   const [concepts, setConcepts] = useState<any[]>([])
-  const [conceptsLoading, setConceptsLoading] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [search, setSearch] = useState('')
-  const [typeFilter, setTypeFilter] = useState('')
+  const [conceptTotal, setConceptTotal] = useState(0)
+  const [graphData, setGraphData] = useState<{ nodes: any[]; edges: any[] } | null>(null)
+
+  // Loading states
+  const [loadingEntities, setLoadingEntities] = useState(true)
+  const [loadingConcepts, setLoadingConcepts] = useState(true)
+  const [loadingGraph, setLoadingGraph] = useState(false)
+
+  // UI state
+  const [showGraph, setShowGraph] = useState(false)
   const svgRef = useRef<SVGSVGElement>(null)
 
-  // ── data loading ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    fetch(`${API_BASE}/api/ai/progress`)
-      .then(r => r.json())
-      .then(setProgress)
-      .catch(() => {})
-  }, [])
+  const GRID_LIMIT = 25
 
   useEffect(() => {
-    if (tab === 'entities' && entities.length === 0) {
-      setLoading(true)
-      fetch(`${API_BASE}/api/ai/entities`)
-        .then(r => r.json())
-        .then(d => { setEntities(d); setLoading(false) })
-        .catch(() => setLoading(false))
-    }
-    if (tab === 'relationships' && relationships.length === 0) {
-      setLoading(true)
-      fetch(`${API_BASE}/api/ai/relationships`)
-        .then(r => r.json())
-        .then(d => { setRelationships(d); setLoading(false) })
-        .catch(() => setLoading(false))
-    }
-    if (tab === 'graph' && !graphData) {
-      setLoading(true)
-      fetch(`${API_BASE}/api/ai/graph`)
-        .then(r => r.json())
-        .then(d => { setGraphData(d); setLoading(false) })
-        .catch(() => setLoading(false))
-    }
-    if (tab === 'concepts' && concepts.length === 0) {
-      setConceptsLoading(true)
-      fetch(`${API_BASE}/api/ai/concepts`)
-        .then(r => r.json())
-        .then(d => { setConcepts(d); setConceptsLoading(false) })
-        .catch(() => setConceptsLoading(false))
-    }
-  }, [tab])
+    fetch(`${API_BASE}/api/ai/progress`).then(r => r.json()).then(setProgress).catch(() => {})
 
-  // ── entity detail navigation ──────────────────────────────────────────────
-  function openEntity(id: number) {
-    router.push(`/ai/entities/${id}`)
-  }
+    const params = new URLSearchParams()
+    if (bookFilter) params.append('book', bookFilter)
+    if (cantoFilter) params.append('canto', cantoFilter)
+    if (chapterFilter) params.append('chapter', chapterFilter)
+    params.append('limit', String(GRID_LIMIT))
 
-  // ── filtered lists ────────────────────────────────────────────────────────
-  const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    fetch(`${API_BASE}/api/ai/personalities?${params}`)
+      .then(r => r.json()).then(d => { setEntities(d.items ?? d); setEntityTotal(d.total ?? 0); setLoadingEntities(false) })
+      .catch(() => setLoadingEntities(false))
+    fetch(`${API_BASE}/api/ai/concepts?limit=${GRID_LIMIT}`)
+      .then(r => r.json()).then(d => { setConcepts(d.items ?? d); setConceptTotal(d.total ?? 0); setLoadingConcepts(false) })
+      .catch(() => setLoadingConcepts(false))
+  }, [bookFilter, cantoFilter, chapterFilter])
+
+  useEffect(() => {
+    if (!showGraph || graphData) return
+    setLoadingGraph(true)
+    fetch(`${API_BASE}/api/ai/graph`)
+      .then(r => r.json()).then(d => { setGraphData(d); setLoadingGraph(false) })
+      .catch(() => setLoadingGraph(false))
+  }, [showGraph])
+
+  // Normalization helper
+  const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+
+  // Client-side filter on the already-fetched page
   const filteredEntities = useMemo(() => {
     let list = entities
-    if (search.trim()) list = list.filter(e => norm(e.sanskrit_name || e.name).includes(norm(search)))
-    // if (typeFilter)    list = list.filter(e => e.entity_type === typeFilter)
-    if (typeFilter)    list = list.filter(e => e.entity_type === typeFilter)
-    console.log(list);
+    if (typeFilter) list = list.filter(e => e.entity_type === typeFilter)
+    if (query.trim()) {
+      const q = norm(query)
+      list = list.filter(e =>
+        norm(e.name).includes(q) ||
+        norm(e.sanskrit_name || '').includes(q) ||
+        (Array.isArray(e.aliases) ? e.aliases : []).some((a: string) => norm(a).includes(q))
+      )
+    }
     return list
-  }, [entities, search, typeFilter])
+  }, [entities, query, typeFilter])
 
-  const filteredRels = useMemo(() => {
-    if (!search.trim()) return relationships
-    return relationships.filter(
-      r => norm(r.source).includes(norm(search)) || norm(r.target).includes(norm(search))
-    )
-  }, [relationships, search])
+  const filteredConcepts = useMemo(() => {
+    if (!query.trim()) return concepts
+    const q = query.toLowerCase()
+    return concepts.filter(c => c.concept.toLowerCase().includes(q))
+  }, [concepts, query])
 
   const entityTypes = useMemo(() =>
     [...new Set(entities.map(e => e.entity_type).filter(Boolean))].sort()
   , [entities])
 
-  // ── filter concepts from API ─────────────────────────────────────────────
-  const filteredConcepts = useMemo(() => {
-    if (!search.trim()) return concepts
-    return concepts.filter((c: any) =>
-      (c.concept || c.name || '').toLowerCase().includes(search.toLowerCase())
-    )
-  }, [concepts, search])
+  const isSearching = query.trim().length > 0
 
-  // ── D3 graph ──────────────────────────────────────────────────────────────
+  // D3 graph
   useEffect(() => {
-    if (tab !== 'graph' || !graphData || !svgRef.current) return
+    if (!showGraph || !graphData || !svgRef.current) return
     const svg = d3.select(svgRef.current)
     svg.selectAll('*').remove()
-
-    const W = svgRef.current.clientWidth || 800
-    const H = svgRef.current.clientHeight || 600
-
+    const W = svgRef.current.clientWidth || 900
+    const H = 600
     const g = svg.append('g')
-    svg.call(
-      d3.zoom<SVGSVGElement, unknown>()
-        .scaleExtent([0.1, 5])
-        .on('zoom', e => g.attr('transform', e.transform))
-    )
+    svg.call(d3.zoom<SVGSVGElement, unknown>().scaleExtent([0.1, 6]).on('zoom', e => g.attr('transform', e.transform)))
 
     const nodes = graphData.nodes.map(n => ({ ...n }))
     const edges = graphData.edges.map(e => ({ ...e }))
 
     const sim = d3.forceSimulation(nodes as any)
-      .force('link', d3.forceLink(edges as any).id((d: any) => d.id).distance(80))
-      .force('charge', d3.forceManyBody().strength(-200))
+      .force('link', d3.forceLink(edges as any).id((d: any) => d.id).distance(100))
+      .force('charge', d3.forceManyBody().strength(-250))
       .force('center', d3.forceCenter(W / 2, H / 2))
-      .force('collision', d3.forceCollide(18))
+      .force('collision', d3.forceCollide(22))
 
-    const link = g.append('g').selectAll('line')
-      .data(edges).enter().append('line')
-      .attr('stroke', '#555').attr('stroke-width', 1).attr('stroke-opacity', 0.5)
+    const link = g.append('g').selectAll('line').data(edges).enter().append('line')
+      .attr('stroke', '#555').attr('stroke-width', 1.2).attr('stroke-opacity', 0.45)
 
-    const node = g.append('g').selectAll('circle')
-      .data(nodes).enter().append('circle')
-      .attr('r', (d: any) => Math.max(6, Math.min(20, 4 + (d.verse_count || 0) * 0.5)))
-      .attr('fill', (d: any) => TYPE_COLORS[d.entity_type] ?? DEFAULT_COLOR)
-      .attr('stroke', '#fff').attr('stroke-width', 0.5)
-      .style('cursor', 'pointer')
-      .on('click', (_e, d: any) => openEntity(d.id))
-      .call(
-        d3.drag<SVGCircleElement, any>()
-          .on('start', (e, d) => { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y })
-          .on('drag',  (e, d) => { d.fx = e.x; d.fy = e.y })
-          .on('end',   (e, d) => { if (!e.active) sim.alphaTarget(0); d.fx = null; d.fy = null })
+    const node = g.append('g').selectAll('circle').data(nodes).enter().append('circle')
+      .attr('r', (d: any) => Math.max(6, Math.min(24, 5 + (d.verse_count || 0) * 0.5)))
+      .attr('fill', (d: any) => TYPE_COLORS[d.type] ?? DEFAULT_COLOR)
+      .attr('stroke', '#fff').attr('stroke-width', 0.8).style('cursor', 'pointer')
+      .on('click', (_e, d: any) => router.push(`/ai/entities/${d.id}`))
+      .call(d3.drag<SVGCircleElement, any>()
+        .on('start', (e, d) => { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y })
+        .on('drag', (e, d) => { d.fx = e.x; d.fy = e.y })
+        .on('end', (e, d) => { if (!e.active) sim.alphaTarget(0); d.fx = null; d.fy = null })
       )
 
     const label = g.append('g').selectAll('text')
-      .data(nodes.filter((d: any) => (d.verse_count || 0) >= 2))
-      .enter().append('text')
-      .text((d: any) => d.name)
-      .attr('font-size', 9)
-      .attr('fill', 'var(--text-primary)')
+      .data(nodes.filter((d: any) => (d.verse_count || 0) >= 3)).enter()
+      .append('text').text((d: any) => d.name)
+      .attr('font-size', 9).attr('fill', 'var(--text-primary)')
       .attr('text-anchor', 'middle')
-      .attr('dy', (d: any) => -Math.max(8, Math.min(22, 4 + (d.verse_count || 0) * 0.5)) - 2)
+      .attr('dy', (d: any) => -Math.max(9, Math.min(26, 5 + (d.verse_count || 0) * 0.5)) - 2)
+      .style('pointer-events', 'none')
 
     sim.on('tick', () => {
-      link
-        .attr('x1', (d: any) => d.source.x).attr('y1', (d: any) => d.source.y)
-        .attr('x2', (d: any) => d.target.x).attr('y2', (d: any) => d.target.y)
+      link.attr('x1', (d: any) => d.source.x).attr('y1', (d: any) => d.source.y)
+          .attr('x2', (d: any) => d.target.x).attr('y2', (d: any) => d.target.y)
       node.attr('cx', (d: any) => d.x).attr('cy', (d: any) => d.y)
       label.attr('x', (d: any) => d.x).attr('y', (d: any) => d.y)
     })
-
     return () => { sim.stop() }
-  }, [tab, graphData])
+  }, [showGraph, graphData])
 
-  // ── styles ────────────────────────────────────────────────────────────────
-  const tabStyle = (active: boolean) => ({
-    padding: '6px 18px',
-    borderRadius: 4,
-    cursor: 'pointer',
-    fontWeight: active ? 600 : 400,
-    backgroundColor: active ? 'var(--accent)' : 'transparent',
-    color: active ? '#fff' : 'var(--text-secondary)',
-    border: 'none',
-    fontSize: '0.85rem',
-    transition: 'all 0.15s',
-  } as React.CSSProperties)
-
-  // ── render ────────────────────────────────────────────────────────────────
   return (
     <main className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-      <SiteNav />
+      <style>{`
+        @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+      `}</style>
 
-      <section className="max-w-6xl mx-auto px-4 py-10">
-        {/* Header */}
-        <h1 className="heading-serif mb-1" style={{ fontSize: '2rem' }}>AI Insights</h1>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: '0.9rem' }}>
-          Entities and relationships inferred by Gemini — kept separate from hand-scraped data.
-        </p>
+      {/* ── Hero ──────────────────────────────────────────────────────────── */}
+      <div style={{
+        background: 'linear-gradient(160deg, var(--accent)14 0%, transparent 50%)',
+        borderBottom: '1px solid var(--border)40',
+        padding: '52px 0 44px',
+      }}>
+        <section className="max-w-5xl mx-auto px-4">
+          <p style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--accent)', marginBottom: 10, fontWeight: 700 }}>
+            Knowledge Graph
+          </p>
+          <h1 className="heading-serif" style={{ fontSize: '2.8rem', marginBottom: 10, lineHeight: 1.1 }}>
+            Personalities &amp; Concepts
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: 30, fontSize: '1rem', maxWidth: '55ch' }}>
+            Search any character, place, or concept across the Śrīmad-Bhāgavatam, Caitanya-caritāmṛta, and beyond.
+          </p>
 
-        {/* Tab bar */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 28, padding: '4px', backgroundColor: 'var(--bg-secondary)', borderRadius: 6, width: 'fit-content' }}>
-          {(['overview', 'entities', 'relationships', 'concepts', 'graph'] as Tab[]).map(t => (
-            <button key={t} style={tabStyle(tab === t)} onClick={() => setTab(t)}>
-              {t.charAt(0).toUpperCase() + t.slice(1)}
-            </button>
-          ))}
-        </div>
+          {/* Search bar */}
+          <div style={{ position: 'relative', maxWidth: 560 }}>
+            <span style={{
+              position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
+              fontSize: '1.1rem', pointerEvents: 'none', opacity: 0.5,
+            }}>🔍</span>
+            <input
+              autoFocus
+              placeholder="Search Krishna, bhakti, Vrindavan, tapasya…"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              style={{
+                width: '100%', padding: '14px 16px 14px 44px',
+                borderRadius: 14, fontSize: '1rem',
+                border: '2px solid var(--accent)40',
+                backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)',
+                outline: 'none', boxSizing: 'border-box',
+                transition: 'border-color 0.2s',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+              }}
+              onFocus={e => (e.target.style.borderColor = 'var(--accent)')}
+              onBlur={e => (e.target.style.borderColor = 'var(--accent)40')}
+            />
+            {query && (
+              <button
+                onClick={() => setQuery('')}
+                style={{
+                  position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'var(--text-secondary)', fontSize: '1.1rem', lineHeight: 1,
+                }}
+              >×</button>
+            )}
+          </div>
 
-        {/* ── OVERVIEW ──────────────────────────────────────────────────── */}
-        {tab === 'overview' && (
-          <div>
-            {!progress ? (
-              <p style={{ color: 'var(--text-secondary)' }}>Loading...</p>
-            ) : (
-              <>
-                {/* KPI cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 32 }}>
-                  {[
-                    { label: 'AI Entities', value: progress.total_entities },
-                    { label: 'Relationships', value: progress.total_relationships },
-                    { label: 'Verses Covered', value: progress.verses_covered },
-                  ].map(kpi => (
-                    <div key={kpi.label} style={{ padding: 20, borderRadius: 8, backgroundColor: 'var(--bg-secondary)', textAlign: 'center' }}>
-                      <div style={{ fontSize: '2rem', fontWeight: 700 }}>{kpi.value?.toLocaleString()}</div>
-                      <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: 4 }}>{kpi.label}</div>
-                    </div>
-                  ))}
-                </div>
+          {/* Stats row */}
+          {progress && (
+            <>
+              <div style={{ display: 'flex', gap: 12, marginTop: 28, flexWrap: 'wrap' }}>
+                <StatCard label="Personalities" value={progress.total_entities} accent="var(--accent)" />
+                <StatCard label="Relationships" value={progress.total_relationships} accent="#7ec8b0" />
+                <StatCard label="Concepts" value={progress.total_concepts} accent="#b0c4de" />
+                <StatCard label="Verses covered" value={progress.verses_covered} accent="#e09a5a" />
+              </div>
 
-                {/* Per-book progress */}
-                {progress.by_book?.length > 0 && (
-                  <div style={{ marginBottom: 32 }}>
-                    <h2 style={{ fontSize: '1.1rem', marginBottom: 12 }}>Coverage by Text</h2>
-                    {progress.by_book.map((b: any) => {
-                      const pct = b.verses_total ? Math.round((b.verses_done / b.verses_total) * 100) : 0
+              {/* By Book Progress */}
+              {progress.by_book && progress.by_book.length > 0 && (
+                <div style={{ marginTop: 24 }}>
+                  <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-secondary)', marginBottom: 10, fontWeight: 600 }}>
+                    Progress by Text
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12 }}>
+                    {progress.by_book.map((book: any) => {
+                      const percentage = book.verses_total > 0 ? Math.round((book.verses_done / book.verses_total) * 100) : 0
                       return (
-                        <div key={b.book} style={{ marginBottom: 14 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                            <span style={{ fontSize: '0.85rem' }}>{b.title} ({b.book})</span>
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                              {b.verses_done.toLocaleString()} / {b.verses_total.toLocaleString()} verses ({pct}%)
-                            </span>
+                        <div key={book.book} style={{
+                          padding: '14px 16px', borderRadius: 12,
+                          backgroundColor: 'var(--bg-secondary)',
+                          border: '1px solid var(--border)40',
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                            <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                              {book.book}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--accent)', fontWeight: 700 }}>
+                              {percentage}%
+                            </div>
                           </div>
-                          <div style={{ height: 6, backgroundColor: 'var(--bg-secondary)', borderRadius: 3 }}>
-                            <div style={{ width: `${pct}%`, height: '100%', backgroundColor: 'var(--accent)', borderRadius: 3, transition: 'width 0.4s' }} />
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
+                            {book.title}
+                          </div>
+                          <div style={{
+                            width: '100%', height: 6, borderRadius: 3,
+                            backgroundColor: 'var(--border)',
+                            overflow: 'hidden',
+                          }}>
+                            <div style={{
+                              height: '100%', width: `${percentage}%`,
+                              background: 'linear-gradient(90deg, var(--accent), var(--accent)88)',
+                              transition: 'width 0.3s ease',
+                            }} />
+                          </div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: 6 }}>
+                            {book.verses_done.toLocaleString()} / {book.verses_total.toLocaleString()} verses
                           </div>
                         </div>
                       )
                     })}
                   </div>
-                )}
+                </div>
+              )}
+            </>
+          )}
+        </section>
+      </div>
 
-                {/* Entity type breakdown */}
-                {progress.entities_by_type?.length > 0 && (
-                  <div>
-                    <h2 style={{ fontSize: '1.1rem', marginBottom: 12 }}>Entities by Type</h2>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                      {progress.entities_by_type.map((r: any) => (
-                        <div key={r.entity_type} style={{
-                          display: 'flex', alignItems: 'center', gap: 8,
-                          padding: '6px 14px', borderRadius: 6,
-                          backgroundColor: (TYPE_COLORS[r.entity_type] ?? DEFAULT_COLOR) + '20',
-                          border: `1px solid ${TYPE_COLORS[r.entity_type] ?? DEFAULT_COLOR}40`,
-                        }}>
-                          <span style={{ color: TYPE_COLORS[r.entity_type] ?? DEFAULT_COLOR, fontWeight: 600 }}>{r.count}</span>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{r.entity_type}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
+      {/* ── Body ─────────────────────────────────────────────────────────── */}
+      <section className="max-w-5xl mx-auto px-4 py-12">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 56 }}>
 
-        {/* ── ENTITIES ──────────────────────────────────────────────────── */}
-        {tab === 'entities' && (
-          <div>
-            <div style={{ display: 'flex', gap: 10, marginBottom: 24, flexWrap: 'wrap' }}>
-              <input
-                placeholder="Search entities…"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', flex: '1 1 200px', fontSize: '0.9rem' }}
-              />
-              <select
-                value={typeFilter}
-                onChange={e => setTypeFilter(e.target.value)}
-                style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '0.9rem' }}
-              >
-                <option value="">All types</option>
-                {entityTypes.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
+          {/* ── Personalities ──────────────────────────────────────────── */}
+          <div style={{ animation: 'fadeIn 0.3s ease' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+              <SectionTitle>
+                {isSearching ? `Personalities matching "${query}"` : 'Personalities'}
+              </SectionTitle>
+              {!isSearching && entityTotal > GRID_LIMIT && (
+                <button onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    sessionStorage.setItem('ai_initial_entities', JSON.stringify({ items: entities, total: entityTotal }))
+                    router.push('/ai/personalities')
+                  }
+                }} style={{ color: 'var(--accent)', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                  See all {entityTotal.toLocaleString()} →
+                </button>
+              )}
             </div>
 
-            {loading ? (
-              <p style={{ color: 'var(--text-secondary)' }}>Loading…</p>
-            ) : filteredEntities.length === 0 ? (
-              <p style={{ color: 'var(--text-secondary)' }}>No AI entities extracted yet.</p>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
-                {filteredEntities.map(e => {
-                  const c = TYPE_COLORS[e.entity_type] ?? DEFAULT_COLOR
+            {/* Type filter chips */}
+            {entityTypes.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+                <button onClick={() => setTypeFilter('')} style={{
+                  padding: '5px 14px', borderRadius: 20, fontSize: '0.78rem', cursor: 'pointer',
+                  border: `1px solid ${!typeFilter ? 'var(--accent)' : 'var(--border)'}`,
+                  backgroundColor: !typeFilter ? 'var(--accent)' : 'var(--bg-secondary)',
+                  color: !typeFilter ? '#fff' : 'var(--text-secondary)',
+                  fontWeight: !typeFilter ? 700 : 400,
+                }}>All</button>
+                {entityTypes.filter(t => t !== 'concept').map(t => {
+                  const c = TYPE_COLORS[t] ?? DEFAULT_COLOR
+                  const active = typeFilter === t
                   return (
-                    <div
-                      key={e.id}
-                      onClick={() => openEntity(e.id)}
-                      style={{
-                        borderRadius: 12, cursor: 'pointer', overflow: 'hidden',
-                        border: `1px solid ${c}35`,
-                        backgroundColor: 'var(--bg-secondary)',
-                        transition: 'transform 0.15s, box-shadow 0.15s',
-                      }}
-                      onMouseEnter={el => { el.currentTarget.style.transform = 'translateY(-3px)'; el.currentTarget.style.boxShadow = `0 8px 24px ${c}30` }}
-                      onMouseLeave={el => { el.currentTarget.style.transform = 'translateY(0)'; el.currentTarget.style.boxShadow = 'none' }}
-                    >
-                      {/* colored top bar */}
-                      <div style={{ height: 4, backgroundColor: c }} />
-                      <div style={{ padding: '14px 16px 16px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                          <span style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: c, fontWeight: 700 }}>{e.entity_type}</span>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', backgroundColor: c + '15', padding: '1px 8px', borderRadius: 10 }}>
-                            {e.verse_count} verse{e.verse_count !== 1 ? 's' : ''}
-                          </span>
-                        </div>
-                        <div style={{ fontWeight: 700, fontSize: '1.1rem', lineHeight: 1.2, marginBottom: 8, color: 'var(--text-primary)' }}>
-                          {e.sanskrit_name || e.name}
-                        </div>
-                        {e.description && (
-                          <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                            {e.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
+                    <button key={t} onClick={() => setTypeFilter(t)} style={{
+                      padding: '5px 14px', borderRadius: 20, fontSize: '0.78rem', cursor: 'pointer',
+                      border: `1px solid ${active ? c : c + '50'}`,
+                      backgroundColor: active ? c + '28' : 'var(--bg-secondary)',
+                      color: active ? c : 'var(--text-secondary)',
+                      fontWeight: active ? 700 : 400,
+                    }}>{TYPE_ICONS[t]} {t}</button>
                   )
                 })}
               </div>
             )}
-          </div>
-        )}
 
-        {/* ── RELATIONSHIPS ──────────────────────────────────────────────── */}
-        {tab === 'relationships' && (
-          <div>
-            <input
-              placeholder="Filter by name…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', width: '100%', maxWidth: 360, marginBottom: 18 }}
-            />
-
-            {loading ? (
-              <p style={{ color: 'var(--text-secondary)' }}>Loading…</p>
-            ) : filteredRels.length === 0 ? (
-              <p style={{ color: 'var(--text-secondary)' }}>No relationships extracted yet.</p>
+            {loadingEntities ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} style={{ borderRadius: 14, overflow: 'hidden', backgroundColor: 'var(--bg-secondary)', padding: 16 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <Skeleton w={40} h={16} /><Skeleton w="70%" h={20} /><Skeleton h={13} /><Skeleton w="85%" h={13} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : filteredEntities.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-secondary)' }}>
+                <div style={{ fontSize: '2rem', marginBottom: 10 }}>🔍</div>
+                <p>No personalities found for "{query}"</p>
+              </div>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-secondary)', textAlign: 'left' }}>
-                    <th style={{ padding: '6px 10px' }}>Source</th>
-                    <th style={{ padding: '6px 10px' }}>Relationship</th>
-                    <th style={{ padding: '6px 10px' }}>Target</th>
-                    <th style={{ padding: '6px 10px', maxWidth: 280 }}>Context</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRels.map(r => (
-                    <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '8px 10px' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <TypeBadge type={r.source_type} />
-                          {r.source_sanskrit || r.source}
-                        </span>
-                      </td>
-                      <td style={{ padding: '8px 10px', color: 'var(--accent)', whiteSpace: 'nowrap' }}>
-                        {formatRelationType(r.entity_type)}
-                      </td>
-                      <td style={{ padding: '8px 10px' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <TypeBadge type={r.target_type} />
-                          {r.target_sanskrit || r.target}
-                        </span>
-                      </td>
-                      <td style={{ padding: '8px 10px', color: 'var(--text-secondary)', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {r.context}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        )}
-
-        {/* ── CONCEPTS ──────────────────────────────────────────────────── */}
-        {tab === 'concepts' && (
-          <ConceptsTab filteredConcepts={filteredConcepts} loading={conceptsLoading} />
-        )}
-
-        {/* ── GRAPH ─────────────────────────────────────────────────────── */}
-        {tab === 'graph' && (
-          <div>
-            {loading ? (
-              <p style={{ color: 'var(--text-secondary)' }}>Loading graph…</p>
-            ) : !graphData || graphData.nodes.length === 0 ? (
-              <p style={{ color: 'var(--text-secondary)' }}>No graph data yet. Run the extraction pipeline to populate AI entities.</p>
-            ) : (
-              <div style={{ position: 'relative' }}>
-                <svg
-                  ref={svgRef}
-                  style={{ width: '100%', height: 600, borderRadius: 8, backgroundColor: 'var(--bg-secondary)' }}
-                />
-                <p style={{ marginTop: 8, fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                  Scroll to zoom · drag nodes · click to view entity detail
-                </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
+                {filteredEntities.map(e => (
+                  <EntityCard key={e.id} entity={e} onClick={() => router.push(`/ai/entities/${e.id}`)} />
+                ))}
               </div>
             )}
           </div>
-        )}
+
+          {/* ── Divider ────────────────────────────────────────────────── */}
+          <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, var(--border), transparent)' }} />
+
+          {/* ── Concepts ───────────────────────────────────────────────── */}
+          <div style={{ animation: 'fadeIn 0.4s ease' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+              <SectionTitle count={isSearching ? filteredConcepts.length : conceptTotal}>
+                {isSearching ? `Concepts matching "${query}"` : 'Concepts & Teachings'}
+              </SectionTitle>
+              {!isSearching && conceptTotal > GRID_LIMIT && (
+                <button onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    sessionStorage.setItem('ai_initial_concepts', JSON.stringify({ items: concepts, total: conceptTotal }))
+                    router.push('/ai/concepts')
+                  }
+                }} style={{ color: 'var(--accent)', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                  See all {conceptTotal.toLocaleString()} →
+                </button>
+              )}
+            </div>
+
+            {loadingConcepts ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} style={{ borderRadius: 14, overflow: 'hidden', backgroundColor: 'var(--bg-secondary)', padding: 16 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <Skeleton w={40} h={16} /><Skeleton w="70%" h={20} /><Skeleton h={13} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : filteredConcepts.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-secondary)' }}>
+                <div style={{ fontSize: '2rem', marginBottom: 10 }}>💡</div>
+                <p>No concepts found for "{query}"</p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
+                {filteredConcepts.map((c: any, i: number) => (
+                  <ConceptCard
+                    key={i}
+                    concept={c}
+                    onClick={() => c.entity_id
+                      ? router.push(`/ai/entities/${c.entity_id}`)
+                      : router.push(`/ai/concepts/${encodeURIComponent(c.concept)}`)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ── Divider ────────────────────────────────────────────────── */}
+          <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, var(--border), transparent)' }} />
+
+          {/* ── Relationship Graph ──────────────────────────────────────── */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <SectionTitle>Family Relationship Graph</SectionTitle>
+              <button
+                onClick={() => setShowGraph(x => !x)}
+                style={{
+                  padding: '8px 20px', borderRadius: 24, cursor: 'pointer',
+                  border: '1px solid var(--accent)50',
+                  backgroundColor: showGraph ? 'var(--accent)' : 'transparent',
+                  color: showGraph ? '#fff' : 'var(--accent)',
+                  fontSize: '0.82rem', fontWeight: 600,
+                  transition: 'all 0.2s',
+                }}
+              >
+                {showGraph ? 'Hide graph' : 'Show graph'}
+              </button>
+            </div>
+
+            {!showGraph && (
+              <div style={{
+                borderRadius: 14, border: '1px dashed var(--border)',
+                padding: '32px 24px', textAlign: 'center',
+                backgroundColor: 'var(--bg-secondary)',
+              }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: 10 }}>🕸️</div>
+                <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.9rem' }}>
+                  An interactive force graph of family relationships between personalities.
+                </p>
+                <p style={{ color: 'var(--text-secondary)', margin: '6px 0 0', fontSize: '0.8rem' }}>
+                  Click "Show graph" to load it. Zoom, drag, and click nodes to open profiles.
+                </p>
+              </div>
+            )}
+
+            {showGraph && (
+              loadingGraph ? (
+                <div style={{ height: 600, borderRadius: 14, backgroundColor: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <p style={{ color: 'var(--text-secondary)' }}>Loading graph…</p>
+                </div>
+              ) : !graphData || graphData.nodes.length === 0 ? (
+                <p style={{ color: 'var(--text-secondary)' }}>No graph data yet — run the extraction pipeline first.</p>
+              ) : (
+                <div>
+                  <svg ref={svgRef} style={{ width: '100%', height: 600, borderRadius: 14, backgroundColor: 'var(--bg-secondary)', display: 'block' }} />
+                  <p style={{ marginTop: 8, fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                    Scroll to zoom · drag to reposition · click a node to open that personality's profile
+                  </p>
+                </div>
+              )
+            )}
+          </div>
+
+        </div>
       </section>
     </main>
   )
 }
+
+export default function AIPage() {
+  return (
+    <Suspense>
+      <AIPageInner />
+    </Suspense>
+  )
+}
+

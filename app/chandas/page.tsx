@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import SiteNav from '../components/SiteNav'
+
 import type { Chanda, ChandasListResponse } from '@/lib/api-types'
 import { safeApiCall, safeArray } from '@/lib/api-safe'
 
@@ -45,7 +45,7 @@ export default function ChandasPage() {
 
   return (
     <main style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', minHeight: '100vh' }}>
-      <SiteNav />
+      
 
       <section style={{ maxWidth: '64rem', margin: '0 auto', padding: '3rem 1rem' }}>
         <h1 style={{ fontSize: '2rem', fontFamily: 'serif', marginBottom: '0.5rem', color: 'var(--gold)' }}>Sanskrit Meters</h1>

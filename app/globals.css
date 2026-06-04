@@ -1,127 +1,450 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+Devanagari:wght@400;500;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ── Theme CSS Variables ────────────────────────────────────────────── */
-:root, [data-theme="dark"] {
-  --bg-primary:     #0f0d0a;
-  --bg-card:        #1a1510;
-  --border-gold:    #d4af37;
-  --text-primary:   #ffffff;
-  --text-parchment: #f4e8d8;
-  --text-muted:     rgba(244,232,216,0.6);
-  --gold:           #d4af37;
-  --nav-bg:         rgba(15,13,10,0.85);
+/* ── Theme Variables ────────────────────────────────────────────────── */
+:root {
+  /* Light devotional theme (default) */
+  --bg-primary:      #FFF9F0;
+  --bg-secondary:    #FFF4E6;
+  --bg-card:         #FFFDF7;
+  --bg-card-hover:   #FFF8EE;
+
+  --gold:            #B8860B;
+  --gold-light:      #D4AF37;
+  --gold-bright:     #F0C040;
+  --saffron:         #E07B22;
+  --saffron-light:   #F5963C;
+  --lotus:           #C2547A;
+  --kumkum:          #C0392B;
+
+  --text-primary:    #2D1B00;
+  --text-secondary:  #5C3D1E;
+  --text-muted:      #9A6B45;
+  --text-parchment:  #4A2E10;
+
+  --border:          #E0C080;
+  --border-light:    #F0D8A8;
+  --border-gold:     #D4AF37;
+
+  --nav-bg:          rgba(255, 249, 240, 0.95);
+  --nav-border:      rgba(224, 192, 128, 0.6);
+
+  --shadow-sm:       0 2px 8px rgba(180, 100, 0, 0.10);
+  --shadow:          0 4px 20px rgba(180, 100, 0, 0.15);
+  --shadow-lg:       0 8px 40px rgba(180, 100, 0, 0.20);
+
+  --hero-bg-start:   #FFF9F0;
+  --hero-bg-end:     #FFF0D8;
+  --section-bg:      #FFF4E6;
+  --om-watermark:    rgba(224, 123, 34, 0.04);
+  --om-ring:         rgba(224, 123, 34, 0.12);
 }
 
-[data-theme="light"] {
-  --bg-primary:     #fef9f0;       /* lotus white */
-  --bg-card:        #fffdf7;       /* pure warm white */
-  --border-gold:    #c8960c;       /* turmeric gold */
-  --text-primary:   #1c0f00;       /* deep brown */
-  --text-parchment: #3d1f00;       /* medium dark brown */
-  --text-muted:     rgba(61,31,0,0.55);
-  --gold:           #b5780a;       /* turmeric (darker so it's readable on white) */
-  --nav-bg:         rgba(254,249,240,0.94);
+[data-theme="dark"] {
+  /* Deep midnight indigo — sacred night sky palette */
+  --bg-primary:      #07071A;
+  --bg-secondary:    #0C0C24;
+  --bg-card:         #10102E;
+  --bg-card-hover:   #141438;
+
+  /* Colours stay warm; they pop against cool indigo */
+  --gold:            #E2B945;
+  --gold-light:      #F0CC60;
+  --gold-bright:     #FAE080;
+  --saffron:         #F0923C;
+  --saffron-light:   #FFA85A;
+  --lotus:           #E070A0;
+  --kumkum:          #E85040;
+
+  --text-primary:    #F0EEFF;
+  --text-secondary:  #C8C0F0;
+  --text-muted:      rgba(180, 168, 230, 0.65);
+  --text-parchment:  #D8D0F8;
+
+  --border:          rgba(130, 100, 220, 0.35);
+  --border-light:    rgba(110, 80, 200, 0.20);
+  --border-gold:     #E2B945;
+
+  --nav-bg:          rgba(7, 7, 26, 0.94);
+  --nav-border:      rgba(130, 100, 220, 0.30);
+
+  --shadow-sm:       0 2px 12px rgba(80, 60, 180, 0.20);
+  --shadow:          0 4px 24px rgba(80, 60, 180, 0.28);
+  --shadow-lg:       0 8px 48px rgba(80, 60, 180, 0.36);
+
+  --hero-bg-start:   #0C0C28;
+  --hero-bg-end:     #07071A;
+  --section-bg:      #0A0A20;
+  --om-watermark:    rgba(240, 146, 60, 0.06);
+  --om-ring:         rgba(130, 100, 220, 0.18);
 }
 
-html {
-  scroll-behavior: smooth;
-}
+/* ── Base ───────────────────────────────────────────────────────────── */
+html { scroll-behavior: smooth; }
 
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  font-family: Georgia, serif;
-  transition: background-color 0.25s, color 0.25s;
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 18px;
+  line-height: 1.7;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* ── Component classes (theme-aware) ──────────────────────────────── */
+/* ── Decorative Divider ─────────────────────────────────────────────── */
+.divider-om {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.5rem 0;
+  color: var(--gold);
+  opacity: 0.5;
+}
+.divider-om::before,
+.divider-om::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-gold), transparent);
+}
+
+/* ── Verse Cards ────────────────────────────────────────────────────── */
 .verse-card {
   background-color: var(--bg-card);
-  border: 1px solid color-mix(in srgb, var(--border-gold) 20%, transparent);
-  border-radius: 0.5rem;
-  padding: 1.5rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 1.75rem;
+  transition: all 0.25s ease;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+.verse-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--saffron), var(--gold), transparent);
+  opacity: 0;
+  transition: opacity 0.25s;
 }
 .verse-card:hover {
-  border-color: color-mix(in srgb, var(--border-gold) 50%, transparent);
+  border-color: var(--border);
+  box-shadow: var(--shadow);
+  transform: translateY(-2px);
 }
-[data-theme="light"] .verse-card {
-  box-shadow: 0 1px 8px rgba(180, 100, 0, 0.08);
-  border-color: color-mix(in srgb, var(--border-gold) 30%, transparent);
+.verse-card:hover::before {
+  opacity: 1;
 }
 
+/* ── Canto Cards ────────────────────────────────────────────────────── */
+.canto-card {
+  background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 2rem;
+  transition: all 0.25s ease;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.canto-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--saffron), var(--gold));
+  transform: scaleX(0);
+  transition: transform 0.25s ease;
+}
+.canto-card:hover {
+  border-color: var(--border);
+  box-shadow: var(--shadow);
+  transform: translateY(-3px);
+}
+.canto-card:hover::after {
+  transform: scaleX(1);
+}
+
+/* ── Typography ─────────────────────────────────────────────────────── */
 .heading-serif {
-  @apply font-serif text-3xl md:text-4xl;
-  color: var(--gold);
+  font-family: 'Crimson Text', Georgia, serif;
+  font-weight: 600;
+  color: var(--saffron);
+  letter-spacing: -0.01em;
+}
+
+.heading-gold {
+  background: linear-gradient(135deg, var(--saffron) 0%, var(--gold) 50%, var(--gold-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .subheading-serif {
-  @apply font-serif text-xl md:text-2xl;
-  color: var(--gold);
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 1.375rem;
+  font-weight: 600;
+  color: var(--saffron);
 }
 
-.text-gold { color: var(--gold); }
-.text-muted-theme { color: var(--text-muted); }
+.devanagari-text {
+  font-family: 'Noto Serif Devanagari', serif;
+  line-height: 2;
+}
 
-/* Theme toggle button */
-.theme-toggle-btn {
-  font-size: 1.1rem;
-  line-height: 1;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.375rem;
-  border: 1px solid color-mix(in srgb, var(--border-gold) 40%, transparent);
-  background: transparent;
+.iast-text {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-style: italic;
+  color: var(--text-secondary);
+  line-height: 1.9;
+}
+
+/* ── Navigation ─────────────────────────────────────────────────────── */
+.site-nav {
+  background-color: var(--nav-bg);
+  border-bottom: 1px solid var(--nav-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.nav-link {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 1rem;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+  position: relative;
+  padding-bottom: 2px;
+}
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--saffron);
+  transform: scaleX(0);
+  transition: transform 0.2s;
+}
+.nav-link:hover {
+  color: var(--saffron);
+}
+.nav-link:hover::after {
+  transform: scaleX(1);
+}
+.nav-link.active {
+  color: var(--saffron);
+}
+.nav-link.active::after {
+  transform: scaleX(1);
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, var(--saffron), var(--gold));
+  color: #FFF9F0;
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  padding: 0.625rem 1.5rem;
+  border-radius: 9999px;
+  border: none;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(224, 123, 34, 0.35);
+  text-decoration: none;
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(224, 123, 34, 0.45);
+}
+
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  color: var(--saffron);
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  padding: 0.625rem 1.5rem;
+  border-radius: 9999px;
+  border: 1.5px solid var(--saffron);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+.btn-outline:hover {
+  background: rgba(224, 123, 34, 0.08);
+  transform: translateY(-2px);
+}
+
+/* ── Theme toggle ───────────────────────────────────────────────────── */
+.theme-toggle-btn {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 1rem;
 }
 .theme-toggle-btn:hover {
-  background: color-mix(in srgb, var(--border-gold) 15%, transparent);
+  background: rgba(224, 123, 34, 0.10);
+  border-color: var(--saffron);
+  color: var(--saffron);
 }
 
-/* Navigation */
-.site-nav {
-  border-bottom: 1px solid color-mix(in srgb, var(--border-gold) 20%, transparent);
-  background-color: var(--nav-bg);
-  backdrop-filter: blur(8px);
-}
-.nav-link {
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  transition: color 0.15s;
-}
-.nav-link:hover { color: var(--gold); }
-
-/* Purport HTML from vedabase */
-.purport-html h2 {
+/* ── Tag / Badge ────────────────────────────────────────────────────── */
+.tag-gold {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--gold);
-  @apply font-serif text-xl mb-4 text-center;
+  background: rgba(184, 134, 11, 0.10);
+  border: 1px solid rgba(184, 134, 11, 0.25);
+  border-radius: 9999px;
+  padding: 0.2em 0.75em;
 }
-.purport-html em, .purport-html i { @apply italic; color: var(--text-parchment); }
-.purport-html p, .purport-html div { @apply mb-4; color: var(--text-parchment); }
+.tag-saffron {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--saffron);
+  background: rgba(224, 123, 34, 0.10);
+  border: 1px solid rgba(224, 123, 34, 0.25);
+  border-radius: 9999px;
+  padding: 0.2em 0.75em;
+}
 
-/* In light mode, make all purport content clearly dark */
-[data-theme="light"] .purport-html,
-[data-theme="light"] .purport-html p,
-[data-theme="light"] .purport-html div,
-[data-theme="light"] .purport-html span {
-  color: var(--text-parchment);
+/* ── Personality chip ───────────────────────────────────────────────── */
+.personality-chip {
+  display: inline-block;
+  font-size: 0.8125rem;
+  color: var(--lotus);
+  background: rgba(194, 84, 122, 0.08);
+  border: 1px solid rgba(194, 84, 122, 0.25);
+  border-radius: 9999px;
+  padding: 0.25em 0.875em;
+  transition: all 0.15s;
+  text-decoration: none;
 }
-[data-theme="light"] .purport-html em,
-[data-theme="light"] .purport-html i {
-  color: var(--gold);        /* italic IAST quotes in gold — still readable */
+.personality-chip:hover {
+  background: rgba(194, 84, 122, 0.15);
+  border-color: var(--lotus);
 }
 
-/* ── Override Tailwind static classes to be theme-aware ────────────── */
-/* Any component still using these Tailwind names will auto-switch theme */
-.text-parchment        { color: var(--text-parchment) !important; }
-.text-temple-gold      { color: var(--gold) !important; }
-.text-temple-gold\/70  { color: color-mix(in srgb, var(--gold) 70%, transparent) !important; }
-.text-temple-gold\/50  { color: color-mix(in srgb, var(--gold) 50%, transparent) !important; }
-.bg-temple-dark        { background-color: var(--bg-primary) !important; }
-.border-temple-gold    { border-color: var(--border-gold) !important; }
+/* ── Section labels ─────────────────────────────────────────────────── */
+.section-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--saffron);
+  opacity: 0.85;
+}
+
+/* ── Purport HTML ───────────────────────────────────────────────────── */
+.purport-html { color: var(--text-parchment); line-height: 1.8; }
+.purport-html h2 { color: var(--saffron); font-family: 'Crimson Text', Georgia, serif; font-size: 1.25rem; margin-bottom: 1rem; }
+.purport-html em, .purport-html i { font-style: italic; color: var(--text-secondary); }
+.purport-html p, .purport-html div { margin-bottom: 1.125rem; }
+.purport-html a { color: var(--saffron); text-decoration: underline; }
+
+/* ── Theme-aware overrides (legacy classnames) ──────────────────────── */
+.text-parchment         { color: var(--text-parchment) !important; }
+.text-gold              { color: var(--gold) !important; }
+.text-temple-gold       { color: var(--gold) !important; }
+.text-temple-gold\/70   { color: color-mix(in srgb, var(--gold) 70%, transparent) !important; }
+.text-temple-gold\/50   { color: color-mix(in srgb, var(--gold) 50%, transparent) !important; }
+.text-muted-theme       { color: var(--text-muted) !important; }
+.bg-temple-dark         { background-color: var(--bg-primary) !important; }
+.border-temple-gold     { border-color: var(--border-gold) !important; }
 .border-temple-gold\/20 { border-color: color-mix(in srgb, var(--border-gold) 20%, transparent) !important; }
 .border-temple-gold\/40 { border-color: color-mix(in srgb, var(--border-gold) 40%, transparent) !important; }
 .hover\:text-temple-gold:hover { color: var(--gold) !important; }
 
+/* ── Hero mandala decoration ────────────────────────────────────────── */
+.mandala-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid;
+  border-color: rgba(224, 123, 34, 0.12);
+  pointer-events: none;
+}
+
+/* ── Scroll accent bar ──────────────────────────────────────────────── */
+.reading-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--saffron), var(--gold));
+  z-index: 100;
+  transition: width 0.1s;
+}
+
+/* ── Table rows ─────────────────────────────────────────────────────── */
+.verse-row {
+  border-bottom: 1px solid var(--border-light);
+  transition: background 0.15s;
+  cursor: pointer;
+}
+.verse-row:hover {
+  background: rgba(224, 123, 34, 0.05);
+}
+
+/* ── Font size control button disabled state ────────────────────────── */
+.theme-toggle-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.theme-toggle-btn:disabled:hover {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-secondary);
+  transform: none;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  body { font-size: 16px; }
+}
+
+/* ── Wider content on large screens (≥75% of viewport) ─────────────── */
+@media (min-width: 1536px) {
+  main .max-w-3xl { max-width: 75vw; }
+  main .max-w-4xl { max-width: 78vw; }
+  main .max-w-5xl { max-width: 80vw; }
+  main .max-w-6xl { max-width: 82vw; }
+  main .max-w-7xl { max-width: 85vw; }
+}
+
+@media (min-width: 1280px) and (max-width: 1535px) {
+  main .max-w-3xl { max-width: 78vw; }
+  main .max-w-4xl { max-width: 80vw; }
+  main .max-w-5xl { max-width: 82vw; }
+  main .max-w-6xl { max-width: 85vw; }
+}
